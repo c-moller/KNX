@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<!--Load the AJAX API-->
+	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <script type="text/javascript">
+	function loadGraphs(){
+
+   		 /*Convert Time */
+    	var startTime = function(period) {
+        	var startDate = new Date();
+        	switch (period){
+            	case 'h': startDate.setTime(startDate.getTime() - 60*60*1000); break;
+            	case '4h': startDate.setTime(startDate.getTime() - 4*60*60*1000); break;
+            	case '8h': startDate.setTime(startDate.getTime() - 8*60*60*1000); break;
+            	case '12h': startDate.setTime(startDate.getTime() - 12*60*60*1000); break;
+            	case 'D': startDate.setTime(startDate.getTime() - 24*60*60*1000); break;
+            	case '3D': startDate.setTime(startDate.getTime() - 3*24*60*60*1000); break;
+            	case 'W': startDate.setTime(startDate.getTime() - 7*24*60*60*1000); break;
+            	case '2W': startDate.setTime(startDate.getTime() - 2*7*24*60*60*1000); break;
+            	case 'M': startDate.setTime(startDate.getTime() - 31*24*60*60*1000); break; //Well...
+            	case '2M': startDate.setTime(startDate.getTime() - 2*31*24*60*60*1000); break;
+            	case '4M': startDate.setTime(startDate.getTime() - 4*31*24*60*60*1000); break;
+            	case 'Y': startDate.setTime(startDate.getTime() - 12*31*24*60*60*1000); break;
+            	default: startDate.setTime(startDate.getTime() - 24*60*60*1000); break;
+        	}
+        	return startDate;
+   		}
+   		/*Get time period based on user input */
+    	var Type_format;
+    	var period = document.getElementById("TimeSelect").value;
+    	switch (period){
+        	case 'h': Type_format='HH:mm'; break;
+        	case '4h': Type_format= 'HH:mm'; break;
+        	case '8h': Type_format= 'HH:mm'; break;
+        	case '12h': Type_format= 'HH:mm'; break;
+        	case 'D': Type_format= 'HH:mm'; break;
+        	case '3D': Type_format= 'EEE HH:mm'; break;
+        	case 'W': Type_format= 'EEE dd/MM'; break;
+        	case '2W': Type_format= 'EEE dd/MM'; break;
+        	case 'M': Type_format= 'EEE dd/MM'; break;
+        	case '2M': Type_format= 'dd/MM'; break;
+        	case '4M': Type_format= 'MMM'; break;
+        	case 'Y': Type_format= 'MMM'; break;
+        	default: Type_format= 'EEE dd/MM'; break;
+    	}
+    	
+//Compute Start UNIX time
+		var startDate = startTime(period);
+		var Time_Data = startDate.getTime();
+		console.log("Time Data: " + Time_Data + ", " + period + ", " + startDate);
+		//Load items page for subnet
+		var loadhttp;
+		loadhttp = new XMLHttpRequest();
+		loadhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				readItems(this);
+			}
+		};
+		loadhttp.open("GET", "/rest/items", true);
+		loadhttp.send();
+		//Load items page for subnet and find items with StateDescription(can plot) and without
+		function readItems(doc) {
+			var JsonDoc, i, txt, ArrayDoc;
+			var NameUnits = [];
+			var units = [];
+			var LabelUnits = [];
+			var LinkUnits = [];
+			var NameNoUnit = [];
+			var LabelNoUnit = [];
+			var LinkNoUnit = [];
+			ArrayDoc = doc.responseText;
+			txt = "";
+			JsonDoc = JSON.parse(ArrayDoc);
+			for (var i = 0; i < JsonDoc.length; i++) {
+				if (JsonDoc[i].stateDescription !== undefined) {
+					NameUnits.push(JsonDoc[i].name);
+					units.push(JsonDoc[i].stateDescription.pattern);
+					LabelUnits.push(JsonDoc[i].label);
+					LinkUnits.push(JsonDoc[i].link);
+				} else {
+					NameNoUnit.push(JsonDoc[i].name);
+					LabelNoUnit.push(JsonDoc[i].label);
+					LinkNoUnit.push(JsonDoc[i].link);
+				}
+			}
+			sortUnit(NameUnits, units, LabelUnits, LinkUnits);
+			console.log("Loaded realKNX items")
+		}
+		var object = this;
+		//Sort variables per unit type
+		function sortUnit(SeriesName, unit, Label, links) {
+			var Type_format, testString;
+			//Read user selected unit
+			var unitString = document.getElementById("UnitSelect").value;
+			object.SeriesName = [];
+			object.Label = [];
+			object.link = [];
+			for (i = 0; i < unit.length; i++) {
+				//Symbol ° not readable so sort Weather variables using label; "Weather - ..."
+				if (Label[i] !== undefined) {
+					testString = Label[i].slice(0, 7);
+				} else {
+					testString = "0";
+				}
+				if (unit[i] == unitString) {
+					object.SeriesName.push(SeriesName[i]);
+					object.Label.push(Label[i]);
+					object.link.push(links[i]);
+				} else if (testString == unitString) {
+					object.SeriesName.push(SeriesName[i]);
+					object.Label.push(Label[i]);
+					object.link.push(links[i]);
+				}
+			}
+			console.log("Selected unit: " + object.Label);
+			getData(object.link, object.SeriesName, object.Label);
+		}
+		//Open XML file for the selected datasets
+		function getData(link, NameSeries, label) {
+			var v = 0;
+			for (i = 0; i < label.length; i++) {
+				var xhttp;
+				xhttp = new XMLHttpRequest();
+				//'http://192.168.1.57:8081/services/habmin/persistence/services/rrd4j/'
+				xhttp.open("GET", link[i] + NameSeries[i] + "?starttime=" + Time_Data, true);
+				xhttp.send();
+				xhttp.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+						readXML(this, v, label, NameSeries);
+						v++;
+					}
+				};
+			}
+		}
+		var totalState = [];
+		var count;
+		//
+		function readXML(xml, k, label, NameSeries) {
+			var finaldata, seriesname, i, txt, xmlDoc, ChartDiv, unitSelect, ChartTitle, DivSelect;
+			var state = [];
+			var date = [];
+			var tps = [];
+			var stt = [];
+			var time = [];
+			xmlDoc = xml.responseXML;
+			txt = "";
+			var seriesname = xmlDoc.getElementsByTagName("name");
+			var series = seriesname[0].innerHTML;
+			//Give Label to data and select correct div placement
+			for (i = 0; i < NameSeries.length; i++) {
+				if (series == NameSeries[i]) {
+					ChartTitle = label[i];
+					DivSelect = i;
+				}
+			}
+			//Convert XML data to chart values
+			finaldata = xmlDoc.getElementsByTagName("data");
+			if (finaldata.length > 1) {
+				t = xmlDoc.getElementsByTagName("time");
+				st = xmlDoc.getElementsByTagName("state");
+				for (j = 0; j < finaldata.length; j++) {
+					date[j] = new Date();
+					time[j] = t[j].innerHTML;
+					tps[j] = parseFloat(time[j]);
+					date[j].setTime(time[j]);
+					stt[j] = st[j].innerHTML;
+					state[j] = parseFloat(stt[j]);
+				}
+			}
+			switch (DivSelect) {
+				case 0:ChartDiv = 'item1';break;
+				case 1:ChartDiv = 'item2';break;
+				case 2:ChartDiv = 'item3';break;
+				case 3:ChartDiv = 'item4';break;
+				default:ChartDiv = 'chartdiv';break;
+			}
+			drawChart(date, state, ChartDiv, ChartTitle);
+			//Draw Special charts
+			unitSelect = document.getElementById("UnitSelect").value;
+			if(unitSelect=="%.2f kW"){
+				count = 0;
+				for (i = state.length; i--;) {
+					count += state[i];
+				}
+				totalState[DivSelect]=count;
+				if (totalState.length>2){
+   					totalState[3]=totalState[0]-totalState[1]-totalState[2];
+   					DrawPie(totalState);
+   					console.log("Draw Pie");
+   				}
+			}
+			else{
+				document.getElementById("SpecialChartDiv").innerHTML = "";
+			}
+			
+		}
+		// Load the Visualization API		
+		function drawChart(date, state, ChartDiv, label) {
+			google.charts.load('current', {
+				packages: ['corechart']
+			});
+			// Set a callback to run when the Google Visualization API is loaded.
+			google.charts.setOnLoadCallback(drawChart);
+			//Line Chart with zoom
+			function drawChart() {
+				var data = new google.visualization.DataTable();
+				data.addColumn('datetime', 'Time of Day');
+				data.addColumn('number', 'Consumption');
+				for (i = 0; i < date.length; i++) {
+					data.addRow([date[i], state[i]]);
+				}
+				var options = {
+					legend: 'none',
+					title: label,
+					backgroundColor: { 
+						fill:'transparent' 
+					},
+					hAxis: {
+						//title: 'Time',
+						format: Type_format,
+						//format: 'EEE dd/MM',
+						titleTextStyle: {
+							color: '#333'
+						}
+					},
+					vAxis: {
+						minValue: 0
+					},
+					explorer: {
+						actions: ['dragToZoom', 'rightClickToReset'],
+						axis: 'horizontal',
+						keepInBounds: true,
+						maxZoomIn: 4.0
+					},
+					colors: ['#D44E41'],
+				};
+				var chart = new google.visualization.LineChart(document.getElementById(ChartDiv));
+				chart.draw(data, options);
+			}
+		}
+
+		function DrawPie(State) {
+			google.charts.load('current', {
+				packages: ['corechart']
+			});
+			google.charts.setOnLoadCallback(ChartPie);
+
+			function ChartPie() {
+				// Define the chart to be drawn.
+				var data = new google.visualization.DataTable();
+				data.addColumn('string', 'Type');
+				data.addColumn('number', 'kW');
+				data.addRows([
+					['Convecteur', State[1]],
+					['Eclairage', State[2]],
+					['Autre', State[3]],
+				]);
+				// Set chart options
+				var options = {
+					'title': 'How much am I consumming?',
+					'backgroundColor': { 
+						'fill':'transparent' }
+				};
+				// Instantiate and draw the chart.
+				var chart = new google.visualization.PieChart(document.getElementById('SpecialChartDiv'));
+				chart.draw(data, options);
+			}
+		}
+	}
+	</script>
+
+</head>
+
+<body>
+
+	<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-6 col-xs-6">
+		<h2> Visualise KNX data </h2>
+		<table>
+			<tr>
+				<td>
+					<form>
+						Select time period to view:
+						<select id="TimeSelect">
+							<option value="2W">2 Weeks</option>
+							<option value="W"> Week</option>
+							<option value="3D">3 Days</option>
+							<option value="D">1 Day</option>
+							<option value="M">Month</option>
+							<option value="2M">2 Months</option>
+							<option value="4M">4 Months</option>
+							<option value="Y">Year</option>
+							<option value="12h">12 Hours</option>
+							<option value="8h">8 Hours</option>
+							<option value="4h">4 Hours</option>
+							<option value="h">1 Hour</option>
+
+						</select>
+					</form>
+				</td>
+				<td>
+					<form>
+						Select unit type to view:
+						<select id="UnitSelect">
+							<option value="%.2f kW">kW</option>
+							<option value="Weather">Weather</option>
+
+						</select>
+					</form>
+				</td>
+			</tr>
+		</table>
+
+		<button button type="button" class="btn-primary" onclick="loadGraphs()">Submit</button>
+	</div>
+
+	<div class="col-lg-12 col-md-12 col-sm-6 col-xs-6">
+		<table class="table" style="width:100%">
+			<tr>
+				<td style="width: 50%;">
+					<div id="item1"></div>
+				</td>
+				<td style="width: 50%;">
+					<div id="item2"></div>
+				</td>
+			</tr>
+			<tr>
+				<td style="width: 50%;">
+					<div id="item3"></div>
+				</td>
+				<td style="width: 50%;">
+					<div id="item4"></div>
+				</td>
+			</tr>
+		</table>
+		<div  id="chartdiv" style="width: 50%"></div>
+		<div  id="SpecialChartDiv" style="width: 50%"></div>
+	</div>
+
+</body>
+
+</html>
