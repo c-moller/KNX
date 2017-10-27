@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Find my realKNX</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+	<script src="./adapter.js"></script>
+	<script src="./DetectRTC.min.js"></script>
+
+	<style>
+	.w3-teal,
+	.w3-hover-teal:hover {
+		color: #fff!important;
+		background-color: #2ea443!important;
+		/* KNX colors 2ea443, 0068b3 */
+	}
+	</style>
+
+</head>
+
+<body>
+	<header class="w3-container w3-blue">
+		<h1>What is my local IP Address?</h1>
+	</header>
+	<article>
+		<iframe id="iframe" sandbox="allow-same-origin allow-scripts" style="display: none"></iframe>
+		<div class="w3-container">
+			<h2>Your local IP address:</h2>
+			<ul></ul>
+
+		</div>
+	</article>
+
+	<script>
+	var browserFeaturesTable = document.querySelector('#browser-features');
+	var screenWidth00 = innerWidth;
+	if (document.querySelector('article')) {
+		screenWidth00 = document.querySelector('article').clientWidth;
+	}
+	window.onerror = console.error = function() {
+		console.log('Error' + JSON.stringify(arguments) + 'error');
+	};
+
+	function printVal(value) {
+		return value == true ? 'Yep' : value == false ? 'Nope' : value;
+	}
+
+	function getInfoDiv(id) {
+		return '<div class="info-div" id="' + id + '"></div>';
+	}
+
+	function isPrivateIP(ip) {
+		var parts = ip.split('.');
+		return parts[0] === '10' ||
+			(parts[0] === '172' && (parseInt(parts[1], 10) >= 16 && parseInt(parts[1], 10) <= 31)) ||
+			(parts[0] === '192' && parts[1] === '168');
+	}
+	var output = '';
+	var Private = [];
+	i = 0;
+
+	function onDetectRTCLoaded() {
+		var li = document.createElement("li");
+		DetectRTC.DetectLocalIPAddress(function(ipAddress) {
+			var testIp = ipAddress.split(" ").pop();
+			Private[i] = isPrivateIP(testIp);
+			console.log(testIp);
+			console.log(Private);
+			var Plength = Private.length == 1;
+			console.log(Plength);
+			if (Private[i] == true && Plength==true) {
+				li.textContent = testIp ;
+                document.getElementsByTagName("ul")[0].appendChild(li);
+			}
+			/*else{
+				document.getElementById('browser-features').innerHTML +='Not possible to detect your local IP. <br> Please try another browser or accept camera and microphone use request.';
+			}*/
+			i++;
+		});
+	}
+
+	function reloadDetectRTC(callback) {
+		DetectRTC.load(function() {
+			onDetectRTCLoaded();
+			if (callback && typeof callback == 'function') {
+				callback();
+			}
+		});
+	}
+	DetectRTC.load(function() {
+		reloadDetectRTC();
+		try {
+			if (DetectRTC.MediaDevices[0] && DetectRTC.MediaDevices[0].label === 'Please invoke getUserMedia once.') {
+				navigator.mediaDevices.getUserMedia({
+					audio: true,
+					video: true
+				}).then(function(stream) {
+					var video;
+					try {
+						video = document.createElement('video');
+						video.muted = true;
+						video.volume = 0;
+						video.src = URL.createObjectURL(stream);
+						video.style.display = 'none';
+						video.style.opacity = 0;
+						(document.body || document.documentElement).appendChild(vide);
+					} catch (e) {}
+					reloadDetectRTC(function() {
+						// release camera
+						stream.getVideoTracks().forEach(function(track) {
+							track.stop();
+						});
+						stream.getAudioTracks().forEach(function(track) {
+							track.stop();
+						});
+						if (video && video.parentNode) {
+							video.parentNode.removeChild(video);
+						}
+					});
+				}).catch(reloadDetectRTC);
+				return;
+			}
+		} catch (e) {}
+		onDetectRTCLoaded();
+	});
+
+	function dataURLToBlob(dataURL) {
+		var BASE64_MARKER = ';base64,';
+		if (dataURL.indexOf(BASE64_MARKER) == -1) {
+			var parts = dataURL.split(',');
+			var contentType = parts[0].split(':')[1];
+			var raw = decodeURIComponent(parts[1]);
+			return new Blob([raw], {
+				type: contentType
+			});
+		}
+		var parts = dataURL.split(BASE64_MARKER);
+		var contentType = parts[0].split(':')[1];
+		var raw = window.atob(parts[1]);
+		var rawLength = raw.length;
+		var uInt8Array = new Uint8Array(rawLength);
+		for (var i = 0; i < rawLength; ++i) {
+			uInt8Array[i] = raw.charCodeAt(i);
+		}
+		return new Blob([uInt8Array], {
+			type: contentType
+		});
+	}
+	</script>
+
+</body>
+
+</html>
