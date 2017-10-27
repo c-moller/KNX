@@ -45,6 +45,15 @@
         	case 'Y': Type_format= 'MMM'; break;
         	default: Type_format= 'EEE dd/MM'; break;
     	}
+    	var ColorScheme=[];
+    	var hexSelect = document.getElementById("ColorSelect").value;
+    	switch (hexSelect){
+        	case 'KNX': ColorScheme=['#2196F3', '#2EA443','#134EDC','#43F062','#13B8DC']; break;
+        	case 'red': ColorScheme= ['#F44336', '#74201A','#C1352B','#F68880','#DD2656']; break;
+        	case 'blue': ColorScheme= ['#2196F3', '#134EDC','#13B8DC','#151CFA','#15FAE5']; break;
+        	case 'green': ColorScheme= ['#2EA443', '#43F062','#20712E','#68B375','#8CF09E']; break;
+        	default: ColorScheme= ['#2196F3', '#2EA443','#134EDC','#43F062','#13B8DC']; break;
+    	}
     	
 //Compute Start UNIX time
 		var startDate = startTime(period);
@@ -138,7 +147,7 @@
 		var count;
 		//
 		function readXML(xml, k, label, NameSeries) {
-			var finaldata, seriesname, i, txt, xmlDoc, ChartDiv, unitSelect, ChartTitle, DivSelect;
+			var finaldata, seriesname, i, txt, xmlDoc, ChartDiv, unitSelect, ChartTitle, DivSelect, ChartColor;
 			var state = [];
 			var date = [];
 			var tps = [];
@@ -170,13 +179,13 @@
 				}
 			}
 			switch (DivSelect) {
-				case 0:ChartDiv = 'item1';break;
-				case 1:ChartDiv = 'item2';break;
-				case 2:ChartDiv = 'item3';break;
-				case 3:ChartDiv = 'item4';break;
-				default:ChartDiv = 'chartdiv';break;
+				case 0:ChartDiv = 'item1'; ChartColor=ColorScheme[0]; break;
+				case 1:ChartDiv = 'item2'; ChartColor=ColorScheme[1]; break;
+				case 2:ChartDiv = 'item3'; ChartColor=ColorScheme[2]; break;
+				case 3:ChartDiv = 'item4'; ChartColor=ColorScheme[3]; break;
+				default:ChartDiv = 'chartdiv'; ChartColor=ColorScheme[0]; break;
 			}
-			drawChart(date, state, ChartDiv, ChartTitle);
+			drawChart(date, state, ChartDiv, ChartTitle, ChartColor);
 			//Draw Special charts
 			unitSelect = document.getElementById("UnitSelect").value;
 			if(unitSelect=="%.2f kW"){
@@ -187,7 +196,7 @@
 				totalState[DivSelect]=count;
 				if (totalState.length>2){
    					totalState[3]=totalState[0]-totalState[1]-totalState[2];
-   					DrawPie(totalState);
+   					DrawPie(totalState, ColorScheme);
    					console.log("Draw Pie");
    				}
 			}
@@ -197,7 +206,7 @@
 			
 		}
 		// Load the Visualization API		
-		function drawChart(date, state, ChartDiv, label) {
+		function drawChart(date, state, ChartDiv, label,ChartColor) {
 			google.charts.load('current', {
 				packages: ['corechart']
 			});
@@ -218,9 +227,7 @@
 						fill:'transparent' 
 					},
 					hAxis: {
-						//title: 'Time',
 						format: Type_format,
-						//format: 'EEE dd/MM',
 						titleTextStyle: {
 							color: '#333'
 						}
@@ -234,14 +241,14 @@
 						keepInBounds: true,
 						maxZoomIn: 4.0
 					},
-					colors: ['#D44E41'],
+					colors: [ChartColor],
 				};
 				var chart = new google.visualization.LineChart(document.getElementById(ChartDiv));
 				chart.draw(data, options);
 			}
 		}
 
-		function DrawPie(State) {
+		function DrawPie(State,colorScheme) {
 			google.charts.load('current', {
 				packages: ['corechart']
 			});
@@ -261,7 +268,8 @@
 				var options = {
 					'title': 'How much am I consumming?',
 					'backgroundColor': { 
-						'fill':'transparent' }
+						'fill':'transparent' },
+					colors: [colorScheme[1], colorScheme[2], colorScheme[0]]
 				};
 				// Instantiate and draw the chart.
 				var chart = new google.visualization.PieChart(document.getElementById('SpecialChartDiv'));
@@ -280,7 +288,7 @@
 		<h2> Visualise KNX data </h2>
 		<table>
 			<tr>
-				<td>
+				<td style="width: 25%;">
 					<form>
 						Select time period to view:
 						<select id="TimeSelect">
@@ -300,13 +308,24 @@
 						</select>
 					</form>
 				</td>
-				<td>
+				<td style="width: 25%;">
 					<form>
 						Select unit type to view:
 						<select id="UnitSelect">
 							<option value="%.2f kW">kW</option>
 							<option value="Weather">Weather</option>
 
+						</select>
+					</form>
+				</td>
+				<td style="width: 25%;">
+					<form>
+						Select Color Scheme:
+						<select id="ColorSelect">
+							<option value="KNX">Default</option>
+							<option value="red">Red</option>
+							<option value="blue">Blue</option>
+							<option value="green">Green</option>
 						</select>
 					</form>
 				</td>
