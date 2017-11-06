@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -33,7 +34,7 @@
 		<iframe id="iframe" sandbox="allow-same-origin allow-scripts" style="display: none"></iframe>
 		<div class="w3-container">
 			<h2>Your local IP address:</h2>
-			<ul></ul>
+			<h3></h3>
 
 		</div>
 	</article>
@@ -67,17 +68,18 @@
 	i = 0;
 
 	function onDetectRTCLoaded() {
-		var li = document.createElement("li");
+		var string = document.createElement("h2");
 		DetectRTC.DetectLocalIPAddress(function(ipAddress) {
 			var testIp = ipAddress.split(" ").pop();
 			Private[i] = isPrivateIP(testIp);
 			console.log(testIp);
 			console.log(Private);
+			console.log(Private.length);
 			var Plength = Private.length == 1;
 			console.log(Plength);
-			if (Private[i] == true && Plength==true) {
-				li.textContent = testIp ;
-                document.getElementsByTagName("ul")[0].appendChild(li);
+			if (Private[i] == true) {
+				string = testIp ;
+               			 document.getElementsByTagName("h3")[0].innerHTML=string;
 			}
 			/*else{
 				document.getElementById('browser-features').innerHTML +='Not possible to detect your local IP. <br> Please try another browser or accept camera and microphone use request.';
