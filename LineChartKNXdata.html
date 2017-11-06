@@ -5,7 +5,35 @@
 	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
   <script type="text/javascript">
+
+  	function ShowForm() {
+    	var x = document.getElementById("hiddenForm");
+   		if (x.style.display === "none") {
+    	    x.style.display = "block";
+    	} else {
+    	    x.style.display = "none";
+    	}
+	}
+
 	function loadGraphs(){
+		function clearDivs(){
+    		document.getElementById("item2").innerHTML = "";
+			document.getElementById("item4").innerHTML = "";
+			document.getElementById("item6").innerHTML = "";
+			document.getElementById("item8").innerHTML = "";
+			document.getElementById("item10").innerHTML = "";
+			document.getElementById("item12").innerHTML = "";
+			document.getElementById("item14").innerHTML = "";
+			document.getElementById("item16").innerHTML = "";
+			document.getElementById("item1").innerHTML = "";
+			document.getElementById("item3").innerHTML = "";
+			document.getElementById("item5").innerHTML = "";
+			document.getElementById("item7").innerHTML = "";
+			document.getElementById("item9").innerHTML = "";
+			document.getElementById("item11").innerHTML = "";
+			document.getElementById("item13").innerHTML = "";
+			document.getElementById("item15").innerHTML = "";
+		}
 
    		 /*Convert Time */
     	var startTime = function(period) {
@@ -45,6 +73,7 @@
         	case 'Y': Type_format= 'MMM'; break;
         	default: Type_format= 'EEE dd/MM'; break;
     	}
+
     	var ColorScheme=[];
     	var hexSelect = document.getElementById("ColorSelect").value;
     	switch (hexSelect){
@@ -96,38 +125,71 @@
 			}
 			sortUnit(NameUnits, units, LabelUnits, LinkUnits);
 			console.log("Loaded realKNX items")
+			clearDivs();
 		}
+
 		var object = this;
 		//Sort variables per unit type
 		function sortUnit(SeriesName, unit, Label, links) {
-			var Type_format, testString;
+			var Type_format, testString1,testString2,index2,index;
 			//Read user selected unit
 			var unitString = document.getElementById("UnitSelect").value;
 			object.SeriesName = [];
 			object.Label = [];
 			object.link = [];
+			object.ylabel=[];
 			for (i = 0; i < unit.length; i++) {
-				//Symbol ° not readable so sort Weather variables using label; "Weather - ..."
-				if (Label[i] !== undefined) {
-					testString = Label[i].slice(0, 7);
-				} else {
-					testString = "0";
-				}
-				if (unit[i] == unitString) {
+				if (unitString=="All"){
 					object.SeriesName.push(SeriesName[i]);
 					object.Label.push(Label[i]);
 					object.link.push(links[i]);
-				} else if (testString == unitString) {
-					object.SeriesName.push(SeriesName[i]);
-					object.Label.push(Label[i]);
-					object.link.push(links[i]);
+					if (unit[i] !== undefined) {
+						index2 = unit[i].indexOf(" ");
+						ylabel.push(unit[i].substr(index2+1));
+					}
+				}else {
+					//Symbol ° not readable so sort Weather variables using label; "Weather - ..."
+					if (Label[i] !== undefined) {
+						index = Label[i].indexOf(" - ");  // Gets the first index where a space occours
+						testString1 = Label[i].substr(0, index); // Gets the first part
+						testString2 = Label[i].substr(index + 3); 
+						console.log(testString1);
+						console.log(testString2);
+					} 
+
+					if (unit[i] !== undefined && unit[i].toUpperCase() == unitString.toUpperCase()) {
+						object.SeriesName.push(SeriesName[i]);
+						object.Label.push(Label[i]);
+						object.link.push(links[i]);
+						index2 = unit[i].indexOf(" ");
+						ylabel.push(unit[i].substr(index2+1));
+					} else if (testString1.toUpperCase() == unitString.toUpperCase()) {
+						object.SeriesName.push(SeriesName[i]);
+						object.Label.push(Label[i]);
+						object.link.push(links[i]);
+						if (unit[i] !== undefined) {
+							index2 = unit[i].indexOf(" ");
+							ylabel.push(unit[i].substr(index2+1));
+						}
+					}
+					else if (testString2.toUpperCase() == unitString.toUpperCase()) {
+						object.SeriesName.push(SeriesName[i]);
+						object.Label.push(Label[i]);
+						object.link.push(links[i]);
+						if (unit[i] !== undefined) {
+							index2 = unit[i].indexOf(" ");
+							ylabel.push(unit[i].substr(index2+1));
+						}
+					}
 				}
+
 			}
-			console.log("Selected unit: " + object.Label);
-			getData(object.link, object.SeriesName, object.Label);
+			console.log("Selected data: " + object.Label);
+			console.log("ylabel: "+ object.ylabel);
+			getData(object.link, object.SeriesName, object.Label,object.ylabel);
 		}
 		//Open XML file for the selected datasets
-		function getData(link, NameSeries, label) {
+		function getData(link, NameSeries, label,ylabel) {
 			var v = 0;
 			for (i = 0; i < label.length; i++) {
 				var xhttp;
@@ -137,7 +199,7 @@
 				xhttp.send();
 				xhttp.onreadystatechange = function() {
 					if (this.readyState == 4 && this.status == 200) {
-						readXML(this, v, label, NameSeries);
+						readXML(this, v, label, NameSeries,ylabel);
 						v++;
 					}
 				};
@@ -145,9 +207,9 @@
 		}
 		var totalState = [];
 		var count;
-		//
-		function readXML(xml, k, label, NameSeries) {
-			var finaldata, seriesname, i, txt, xmlDoc, ChartDiv, unitSelect, ChartTitle, DivSelect, ChartColor;
+		//read time point data and sort for line plot
+		function readXML(xml, k, label, NameSeries,ylabel) {
+			var finaldata, seriesname, i, txt, xmlDoc, ChartDiv, unitSelect, ChartTitle, DivSelect, ChartColor,AxisLabel;
 			var state = [];
 			var date = [];
 			var tps = [];
@@ -161,6 +223,7 @@
 			for (i = 0; i < NameSeries.length; i++) {
 				if (series == NameSeries[i]) {
 					ChartTitle = label[i];
+					AxisLabel = ylabel[i];
 					DivSelect = i;
 				}
 			}
@@ -178,17 +241,31 @@
 					state[j] = parseFloat(stt[j]);
 				}
 			}
+			//Select chart placement and color scheme
 			switch (DivSelect) {
 				case 0:ChartDiv = 'item1'; ChartColor=ColorScheme[0]; break;
 				case 1:ChartDiv = 'item2'; ChartColor=ColorScheme[1]; break;
 				case 2:ChartDiv = 'item3'; ChartColor=ColorScheme[2]; break;
 				case 3:ChartDiv = 'item4'; ChartColor=ColorScheme[3]; break;
+				case 4:ChartDiv = 'item5'; ChartColor=ColorScheme[0]; break;
+				case 5:ChartDiv = 'item6'; ChartColor=ColorScheme[2]; break;
+				case 6:ChartDiv = 'item7'; ChartColor=ColorScheme[1]; break;
+				case 7:ChartDiv = 'item8'; ChartColor=ColorScheme[3]; break;
+				case 8:ChartDiv = 'item9'; ChartColor=ColorScheme[0]; break;
+				case 9:ChartDiv = 'item10'; ChartColor=ColorScheme[1]; break;
+				case 10:ChartDiv = 'item11'; ChartColor=ColorScheme[2]; break;
+				case 11:ChartDiv = 'item12'; ChartColor=ColorScheme[3]; break;
+				case 12:ChartDiv = 'item13'; ChartColor=ColorScheme[0]; break;
+				case 13:ChartDiv = 'item14'; ChartColor=ColorScheme[2]; break;
+				case 14:ChartDiv = 'item15'; ChartColor=ColorScheme[1]; break;
+				case 15:ChartDiv = 'item16'; ChartColor=ColorScheme[3]; break;
 				default:ChartDiv = 'chartdiv'; ChartColor=ColorScheme[0]; break;
 			}
-			drawChart(date, state, ChartDiv, ChartTitle, ChartColor);
+			drawChart(date, state, ChartDiv, ChartTitle, ChartColor, AxisLabel);
 			//Draw Special charts
 			unitSelect = document.getElementById("UnitSelect").value;
-			if(unitSelect=="%.2f kW"){
+			var cmpString="%.2f kW";
+			if(unitSelect.toUpperCase()==cmpString.toUpperCase()){
 				count = 0;
 				for (i = state.length; i--;) {
 					count += state[i];
@@ -206,7 +283,7 @@
 			
 		}
 		// Load the Visualization API		
-		function drawChart(date, state, ChartDiv, label,ChartColor) {
+		function drawChart(date, state, ChartDiv, label,ChartColor,ylabel) {
 			google.charts.load('current', {
 				packages: ['corechart']
 			});
@@ -216,7 +293,7 @@
 			function drawChart() {
 				var data = new google.visualization.DataTable();
 				data.addColumn('datetime', 'Time of Day');
-				data.addColumn('number', 'Consumption');
+				data.addColumn('number', ylabel);
 				for (i = 0; i < date.length; i++) {
 					data.addRow([date[i], state[i]]);
 				}
@@ -233,6 +310,7 @@
 						}
 					},
 					vAxis: {
+						title: ylabel,
 						minValue: 0
 					},
 					explorer: {
@@ -284,79 +362,105 @@
 <body>
 
 	<div class="row">
-    <div class="col-lg-12 col-md-12 col-sm-6 col-xs-6">
-		<h2> Visualise KNX data </h2>
-		<table>
-			<tr>
-				<td style="width: 25%;">
-					<form>
-						Select time period to view:
-						<select id="TimeSelect">
-							<option value="2W">2 Weeks</option>
-							<option value="W"> Week</option>
-							<option value="3D">3 Days</option>
-							<option value="D">1 Day</option>
-							<option value="M">Month</option>
-							<option value="2M">2 Months</option>
-							<option value="4M">4 Months</option>
-							<option value="Y">Year</option>
-							<option value="12h">12 Hours</option>
-							<option value="8h">8 Hours</option>
-							<option value="4h">4 Hours</option>
-							<option value="h">1 Hour</option>
-
-						</select>
-					</form>
-				</td>
-				<td style="width: 25%;">
-					<form>
-						Select unit type to view:
-						<select id="UnitSelect">
-							<option value="%.2f kW">kW</option>
-							<option value="Weather">Weather</option>
-
-						</select>
-					</form>
-				</td>
-				<td style="width: 25%;">
-					<form>
-						Select Color Scheme:
-						<select id="ColorSelect">
-							<option value="KNX">Default</option>
-							<option value="red">Red</option>
-							<option value="blue">Blue</option>
-							<option value="green">Green</option>
-						</select>
-					</form>
-				</td>
-			</tr>
-		</table>
-
-		<button button type="button" class="btn-primary" onclick="loadGraphs()">Submit</button>
+		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+		<div class="col-lg-8 col-md-8 col-sm-8 col-xs-8">
+			<h2> Visualise KNX data </h2>
+		</div>
+		<div class="col-lg-4 col-md-4 col-sm-4 col-xs-4 text-right">
+			<button onclick="ShowForm()" class="btn pull-right"><img src="/pics/Palette-btn.png"></button>
+			<form id="hiddenForm" style="display: none">
+				<select id="ColorSelect">
+					<option value="KNX">Default</option>
+						<option value="red">Red</option>
+						<option value="blue">Blue</option>
+						<option value="green">Green</option>
+					</select>
+			</form>
+		</div>
 	</div>
+		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+			<div class="col-lg-4 col-md-4 col-sm-4 col-xs-4" >
+				<form>
+					<p>Select room:</p>
+					<select id="RoomSelect">
+						<option value="All">All</option>
+						<option value="%.2f kW">kW</option>
+						<option value="Weather">Weather</option>
+						<option value="%d">Decimal</option>
+						<option value="Thermostat">Thermostat</option>
+						<option value="Volume">Volume</option>
+					</select>
+				</form>
+			</div>
+			<div class="col-lg-4 col-md-4 col-sm-4 col-xs-4" >
+				<form>
+					<p>Select type:</p>
+					<select id="UnitSelect">
+						<option value="All">All</option>
+						<option value="%.2f kW">kW</option>
+						<option value="Weather">Weather</option>
+						<option value="%d">Decimal</option>
+						<option value="Thermostat">Thermostat</option>
+						<option value="Volume">Volume</option>
+					</select>
+				</form>
+			</div>
+			<div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">
+				<form>
+					<p>Select time period:</p>
+					<select id="TimeSelect">
+						<option value="2W">2 Weeks</option>
+						<option value="W"> Week</option>
+						<option value="3D">3 Days</option>
+						<option value="D">1 Day</option>
+						<option value="M">Month</option>
+						<option value="2M">2 Months</option>
+						<option value="4M">4 Months</option>
+						<option value="Y">Year</option>
+						<option value="12h">12 Hours</option>
+						<option value="8h">8 Hours</option>
+						<option value="4h">4 Hours</option>
+						<option value="h">1 Hour</option>
 
-	<div class="col-lg-12 col-md-12 col-sm-6 col-xs-6">
-		<table class="table" style="width:100%">
-			<tr>
-				<td style="width: 50%;">
-					<div id="item1"></div>
-				</td>
-				<td style="width: 50%;">
-					<div id="item2"></div>
-				</td>
-			</tr>
-			<tr>
-				<td style="width: 50%;">
-					<div id="item3"></div>
-				</td>
-				<td style="width: 50%;">
-					<div id="item4"></div>
-				</td>
-			</tr>
-		</table>
-		<div  id="chartdiv" style="width: 50%"></div>
-		<div  id="SpecialChartDiv" style="width: 50%"></div>
-	</div>
+					</select>
+				</form>
+			</div>
+			<div class="col-lg-5 col-md-5 col-sm-4 col-xs-4 col-lg-offset-3 col-md-offset-3 ">
+				<br>
+			<button type="button" class="btn btn-outline-primary btn-md btn-block" onclick="loadGraphs()">Submit and Reload</button>
+		</div>
+		</div>
+
+		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+			<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+				<div id="item1"></div>
+				<div id="item3"></div>
+				<div id="item5"></div>
+				<div id="item7"></div>
+				<div id="item9"></div>
+				<div id="item11"></div>
+				<div id="item13"></div>
+				<div id="item15"></div>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+				<div id="item2"></div>
+				<div id="item4"></div>
+				<div id="item6"></div>
+				<div id="item8"></div>
+				<div id="item10"></div>
+				<div id="item12"></div>
+				<div id="item14"></div>
+				<div id="item16"></div>
+			</div>
+		</div>
+		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+			<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+				<div id="SpecialChartDiv"></div>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+				<div id="chartdiv"></div>
+			</div>
+		</div>
 
 </body>
 
